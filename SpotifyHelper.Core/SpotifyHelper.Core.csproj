@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>netstandard2.1</TargetFramework>
+		<LangVersion>9</LangVersion>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
+		<PackageReference Include="SpotifyAPI.Web" Version="6.0.0" />
+		<PackageReference Include="SpotifyAPI.Web.Auth" Version="6.0.0" />
+		<PackageReference Include="System.Text.Json" Version="5.0.1" />
+	</ItemGroup>
+
+</Project>
