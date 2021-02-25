@@ -29,47 +29,73 @@ namespace SpotifyHelper.UI
         /// </summary>
         private void InitializeComponent()
         {
-            this.button1 = new System.Windows.Forms.Button();
-            this.checkedListBox1 = new System.Windows.Forms.CheckedListBox();
+            this.AuthButton = new System.Windows.Forms.Button();
+            this.PlaylistsList = new System.Windows.Forms.CheckedListBox();
+            this.currentPlayback = new System.Windows.Forms.Label();
+            this.ConfigButton = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
-            // button1
+            // AuthButton
             // 
-            this.button1.Location = new System.Drawing.Point(12, 12);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(75, 23);
-            this.button1.TabIndex = 0;
-            this.button1.Text = "Auth";
-            this.button1.UseVisualStyleBackColor = true;
-            this.button1.Click += new System.EventHandler(this.button1_Click);
+            this.AuthButton.Location = new System.Drawing.Point(12, 12);
+            this.AuthButton.Name = "AuthButton";
+            this.AuthButton.Size = new System.Drawing.Size(75, 23);
+            this.AuthButton.TabIndex = 0;
+            this.AuthButton.Text = "Auth";
+            this.AuthButton.UseVisualStyleBackColor = true;
+            this.AuthButton.Click += new System.EventHandler(this.button1_Click);
             // 
-            // checkedListBox1
+            // PlaylistsList
             // 
-            this.checkedListBox1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.checkedListBox1.FormattingEnabled = true;
-            this.checkedListBox1.Location = new System.Drawing.Point(12, 41);
-            this.checkedListBox1.Name = "checkedListBox1";
-            this.checkedListBox1.Size = new System.Drawing.Size(313, 328);
-            this.checkedListBox1.TabIndex = 1;
+            this.PlaylistsList.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.PlaylistsList.CheckOnClick = true;
+            this.PlaylistsList.FormattingEnabled = true;
+            this.PlaylistsList.Location = new System.Drawing.Point(12, 41);
+            this.PlaylistsList.Name = "PlaylistsList";
+            this.PlaylistsList.Size = new System.Drawing.Size(313, 328);
+            this.PlaylistsList.TabIndex = 1;
             // 
-            // Form1
+            // currentPlayback
+            // 
+            this.currentPlayback.AutoSize = true;
+            this.currentPlayback.Location = new System.Drawing.Point(93, 16);
+            this.currentPlayback.Name = "currentPlayback";
+            this.currentPlayback.Size = new System.Drawing.Size(0, 15);
+            this.currentPlayback.TabIndex = 2;
+            // 
+            // ConfigButton
+            // 
+            this.ConfigButton.Location = new System.Drawing.Point(228, 12);
+            this.ConfigButton.Name = "ConfigButton";
+            this.ConfigButton.Size = new System.Drawing.Size(97, 23);
+            this.ConfigButton.TabIndex = 3;
+            this.ConfigButton.Text = "Config Bind";
+            this.ConfigButton.UseVisualStyleBackColor = true;
+            this.ConfigButton.Click += new System.EventHandler(this.ConfigButton_Click);
+            // 
+            // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(337, 372);
-            this.Controls.Add(this.checkedListBox1);
-            this.Controls.Add(this.button1);
-            this.Name = "Form1";
-            this.Text = "Form1";
-            this.Load += new System.EventHandler(this.Form1_Load);
+            this.Controls.Add(this.ConfigButton);
+            this.Controls.Add(this.currentPlayback);
+            this.Controls.Add(this.PlaylistsList);
+            this.Controls.Add(this.AuthButton);
+            this.Name = "MainForm";
+            this.Text = "Config";
+            this.Load += new System.EventHandler(this.MainForm_Load);
             this.ResumeLayout(false);
+            this.PerformLayout();
 
         }
 
         #endregion
 
-        private System.Windows.Forms.Button button1;
-        private System.Windows.Forms.CheckedListBox checkedListBox1;
+        private System.Windows.Forms.Button AuthButton;
+        private System.Windows.Forms.CheckedListBox PlaylistsList;
+        private System.Windows.Forms.Label currentPlayback;
+        private System.Windows.Forms.Button ConfigButton;
     }
 }
 

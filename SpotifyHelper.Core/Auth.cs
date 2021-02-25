@@ -4,6 +4,7 @@ using SpotifyHelper.Core.Extensions;
 using System;
 using System.IO;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SpotifyHelper.Core
@@ -15,78 +16,87 @@ namespace SpotifyHelper.Core
 
         public static async Task<IAuthenticator> GetAuthenticatorFromFileAsync()
         {
-            var token = await GetFromFile();
+            var token = await GetFromFileAsync();
 
             if (token is null)
             {
                 return null;
             }
 
-            return await GetAuthenticatorFromToken(token);
+            return await GetAuthenticatorFromTokenAsync(token);
         }
 
-        public static async Task<IAuthenticator> GetAuthenticator()
+        public static async Task<IAuthenticator> GetAuthenticatorAsync()
         {
-            var token = await GetFromFile();
+            var token = await GetFromFileAsync();
 
             if (token is null)
             {
                 var (verifier, challenge) = PKCEUtil.GenerateCodes(120);
 
-                var code = await GetCode(challenge);
+                var code = await GetCodeAsync(challenge);
 
-                token = await new OAuthClient().RequestToken(new PKCETokenRequest(CLIENT_ID, code, s_baseUri, verifier));
+                token = await new OAuthClient()
+                    .RequestToken(new PKCETokenRequest(CLIENT_ID, code, s_baseUri, verifier));
             }
 
-            return await GetAuthenticatorFromToken(token);
+            return await GetAuthenticatorFromTokenAsync(token);
         }
 
-        private static async Task<IAuthenticator> GetAuthenticatorFromToken(PKCETokenResponse token)
+        private static async Task<IAuthenticator> GetAuthenticatorFromTokenAsync(PKCETokenResponse token)
         {
             var authenticator = new PKCEAuthenticator(CLIENT_ID, token);
 
-            await WriteToFile(token);
+            await WriteToFileAsync(token);
 
             authenticator.TokenRefreshed += async (sender, e) =>
             {
-                await WriteToFile(e);
+                await WriteToFileAsync(e);
             };
 
             return authenticator;
         }
 
-        private static async Task<string> GetCode(string challenge)
+        private static async Task<string> GetCodeAsync(string challenge)
         {
             var loginUrl = GetLoginUrl(challenge);
 
-            var code = "";
+            var code = string.Empty;
 
             var server = CreateServer();
             await server.Start();
 
-            try
+            var loginBrowser = Browser.OpenDefault(loginUrl.AbsoluteUri);
+
+            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
+
+            server.AuthorizationCodeReceived += (sender, receivedCode) =>
             {
-                var loginBrowser = Browser.OpenDefault(loginUrl.AbsoluteUri);
+                code = receivedCode.Code;
 
-                server.AuthorizationCodeReceived += async (sender, receivedCode) =>
-                {
-                    code = receivedCode.Code;
+                loginBrowser?.CloseMainWindow();
 
-                    loginBrowser.CloseMainWindow();
+                return Task.CompletedTask;
+            };
 
-                    await server.Stop();
-                };
+            await loginBrowser.WaitForExitAsync(cts.Token);
 
-                loginBrowser.Refresh();
-
-                await loginBrowser.WaitForExitAsync();
-            }
-            catch (Exception)
-            {
-                throw;
-            }
+           await Cleanup();
 
             return code;
+
+            async Task Cleanup()
+            {            
+                loginBrowser?.Dispose();
+                loginBrowser = null;
+
+                await server?.Stop();
+                server?.Dispose();
+                server = null;
+
+                cts?.Dispose();
+                cts = null;
+            }
         }
 
         private static Uri GetLoginUrl(string challenge)
@@ -105,7 +115,8 @@ namespace SpotifyHelper.Core
             {
                 CodeChallengeMethod = "S256",
                 CodeChallenge = challenge,
-                Scope = scopes
+                Scope = scopes,
+                ShowDialog = false
             };
 
             return loginRequest.ToUri();
@@ -113,20 +124,20 @@ namespace SpotifyHelper.Core
 
         private static EmbedIOAuthServer CreateServer() => new EmbedIOAuthServer(s_baseUri, 3030);
 
-        private static async Task WriteToFile(object obj)
+        private static async Task WriteToFileAsync(PKCETokenResponse obj)
         {
-            using var file = File.OpenWrite("creds.dat");
+            await using var file = File.OpenWrite("creds.dat");
 
             await JsonSerializer.SerializeAsync(file, obj);
 
             await file.FlushAsync();
         }
 
-        private static async Task<PKCETokenResponse> GetFromFile()
+        private static async Task<PKCETokenResponse> GetFromFileAsync()
         {
             try
             {
-                using var file = File.OpenRead("creds.dat");
+                await using var file = File.OpenRead("creds.dat");
 
                 var result = await JsonSerializer.DeserializeAsync(file, typeof(PKCETokenResponse));
 

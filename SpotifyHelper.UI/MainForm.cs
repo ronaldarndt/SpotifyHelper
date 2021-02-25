@@ -11,28 +11,16 @@ namespace SpotifyHelper.UI
 {
     public partial class MainForm : Form
     {
-        private delegate object GetSelectedItemDelegate();
+        private delegate object GetCheckedItemDelegate();
 
-        private SpotifyClient _client;
-        private Dictionary<string, string> _playlists;
+        private Services m_services;
+        private int m_hotkeyId = -1;
 
         public MainForm()
         {
             InitializeComponent();
-        }
 
-        private async void button1_Click(object sender, EventArgs e)
-        {
-            var authenticator = await Auth.GetAuthenticator();
-
-            await Initialize(authenticator);
-        }
-
-        private async void Form1_Load(object sender, EventArgs e)
-        {
-            var authenticator = await Auth.GetAuthenticatorFromFileAsync();
-
-            await Initialize(authenticator);
+            ConfigButton.Visible = false;
         }
 
         private async Task Initialize(IAuthenticator authenticator)
@@ -42,52 +30,85 @@ namespace SpotifyHelper.UI
                 return;
             }
 
-            button1.Visible = false;
+            AuthButton.Visible = false;
+            ConfigButton.Visible = true;
 
-            var config = SpotifyClientConfig
+            ConfigProvider<HotkeyConfig>.ConfigChanged += ConfigureHotkey;
+
+            await ConfigProvider<HotkeyConfig>.InitializeAsync(new HotkeyConfig()
+            {
+                Keys = Keys.F1,
+                Modifiers = KeyModifiers.Control
+            });
+
+            var spotifyConfig = SpotifyClientConfig
                 .CreateDefault()
+                .WithHTTPLogger(null)
                 .WithAuthenticator(authenticator);
 
-            _client = new SpotifyClient(config);
+            var client = new SpotifyClient(spotifyConfig);
+            m_services = new Services(client);
 
-            var playlists = await _client.PaginateAll(await _client.Playlists.CurrentUsers());
+            var playlists = await m_services.GetPlaylists();
 
-            _playlists = playlists.ToDictionary(x => $"{x.Name} - {x.Id}", x => x.Id);
+            PlaylistsList.Items.AddRange(playlists.Select(x => x.Name + " - " + x.Id).ToArray());
+        }
 
-            checkedListBox1.Items.AddRange(_playlists.Select(x => x.Key).ToArray());
-
-            playlists.Clear();
-
-            var hotkey = HotKeyManager.RegisterHotKey(Keys.E, KeyModifiers.Control);
-
-            HotKeyManager.HotKeyPressed += async (sender, e) =>
+        private void ConfigureHotkey(HotkeyConfig config)
+        {
+            if (m_hotkeyId == -1)
             {
-                var selectedKey = Invoke(new GetSelectedItemDelegate(() => checkedListBox1.SelectedItem)).ToString();
+                HotKeyManager.HotKeyPressed += HandleHotkey;
+            }
+            else
+            {
+                HotKeyManager.UnregisterHotKey(m_hotkeyId);
+            }
 
-                if (string.IsNullOrEmpty(selectedKey) || !_playlists.ContainsKey(selectedKey))
-                {
-                    return;
-                }
+            m_hotkeyId = HotKeyManager.RegisterHotKey(config.Keys, config.Modifiers);
+        }
 
-                var playback = await _client.Player.GetCurrentPlayback();
+        private object GetCheckedItems()
+        {
+            var checkedItems = new List<string>();
 
-                if (playback != null && playback.IsPlaying && playback.Item is FullTrack track)
-                {
-                    var selected = _playlists[selectedKey];
-                    var playlist = await _client.Playlists.Get(selected);
+            foreach (var item in PlaylistsList.CheckedItems)
+            {
+                checkedItems.Add(item.ToString());
+            }
 
-                    if (playlist.Tracks.Items.Any(x => x.Track is FullTrack playlistTrack && playlistTrack.Id == track.Id))
-                    {
-                        return;
-                    }
+            return checkedItems;
+        }
 
-                    var currentlyPlaying = new List<string>() { track.Uri };
+        private async void HandleHotkey(object sender, HotKeyEventArgs e)
+        {
+            var selectedKeys = (List<string>)Invoke(new GetCheckedItemDelegate(GetCheckedItems));
 
-                    await _client.Playlists.AddItems(selected, new PlaylistAddItemsRequest(currentlyPlaying));
-                }
-            };
+            foreach (var selectedKey in selectedKeys.Select(x => x.Split("- ")[1]))
+            {
+                await m_services.AddCurrentlyPlayingToPlaylist(selectedKey);
+            }
+        }
 
-            await Task.Delay(0);
+        private async void button1_Click(object sender, EventArgs e)
+        {
+            var authenticator = await Auth.GetAuthenticatorAsync();
+
+            await Initialize(authenticator);
+        }
+
+        private async void MainForm_Load(object sender, EventArgs e)
+        {
+            var authenticator = await Auth.GetAuthenticatorFromFileAsync();
+
+            await Initialize(authenticator);
+        }
+
+        private void ConfigButton_Click(object sender, EventArgs e)
+        {
+            using var configForm = new ConfigForm();
+
+            configForm.ShowDialog();
         }
     }
 }

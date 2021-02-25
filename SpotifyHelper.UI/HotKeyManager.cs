@@ -9,6 +9,7 @@ namespace SpotifyHelper.UI
     [Flags]
     public enum KeyModifiers
     {
+        None = 0,
         Alt = 1,
         Control = 2,
         Shift = 4,
@@ -135,5 +136,11 @@ namespace SpotifyHelper.UI
 
             Modifiers = (KeyModifiers)(param & 0x0000ffff);
         }
+    }
+
+    public class HotkeyConfig
+    {
+        public Keys Keys { get; set; }
+        public KeyModifiers Modifiers { get; set; }
     }
 }
