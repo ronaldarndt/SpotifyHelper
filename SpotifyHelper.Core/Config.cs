@@ -20,15 +20,15 @@ namespace SpotifyHelper.Core
             ReadCommentHandling = JsonCommentHandling.Skip
         });
 
-        private static T _config;
+        private static T m_config;
 
         public static T Config
         {
-            get => _config;
+            get => m_config;
 
             private set
             {
-                _config = value;
+                m_config = value;
 
                 ConfigChanged.Invoke(value);
             }

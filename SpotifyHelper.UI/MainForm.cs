@@ -3,6 +3,7 @@ using SpotifyHelper.Core;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -14,13 +15,13 @@ namespace SpotifyHelper.UI
         private delegate object GetCheckedItemDelegate();
 
         private Services m_services;
+        private ProgramStartup m_startup;
+
         private int m_hotkeyId = -1;
 
         public MainForm()
         {
             InitializeComponent();
-
-            ConfigButton.Visible = false;
         }
 
         private async Task Initialize(IAuthenticator authenticator)
@@ -33,13 +34,15 @@ namespace SpotifyHelper.UI
             AuthButton.Visible = false;
             ConfigButton.Visible = true;
 
-            ConfigProvider<HotkeyConfig>.ConfigChanged += ConfigureHotkey;
+            HotKeyManager.HotKeyPressed += HandleHotkey;
+            ConfigProvider<HotKeyManager.HotkeyConfig>.ConfigChanged += ConfigureHotkey;
 
-            await ConfigProvider<HotkeyConfig>.InitializeAsync(new HotkeyConfig()
-            {
-                Keys = Keys.F1,
-                Modifiers = KeyModifiers.Control
-            });
+            await ConfigProvider<HotKeyManager.HotkeyConfig>
+                .InitializeAsync(new HotKeyManager.HotkeyConfig()
+                {
+                    Keys = Keys.F1,
+                    Modifiers = HotKeyManager.KeyModifiers.Control
+                });
 
             var spotifyConfig = SpotifyClientConfig
                 .CreateDefault()
@@ -54,13 +57,9 @@ namespace SpotifyHelper.UI
             PlaylistsList.Items.AddRange(playlists.Select(x => x.Name + " - " + x.Id).ToArray());
         }
 
-        private void ConfigureHotkey(HotkeyConfig config)
+        private void ConfigureHotkey(HotKeyManager.HotkeyConfig config)
         {
-            if (m_hotkeyId == -1)
-            {
-                HotKeyManager.HotKeyPressed += HandleHotkey;
-            }
-            else
+            if (m_hotkeyId > -1)
             {
                 HotKeyManager.UnregisterHotKey(m_hotkeyId);
             }
@@ -80,7 +79,7 @@ namespace SpotifyHelper.UI
             return checkedItems;
         }
 
-        private async void HandleHotkey(object sender, HotKeyEventArgs e)
+        private async void HandleHotkey(object sender, HotKeyManager.HotKeyEventArgs e)
         {
             var selectedKeys = (List<string>)Invoke(new GetCheckedItemDelegate(GetCheckedItems));
 
@@ -99,6 +98,14 @@ namespace SpotifyHelper.UI
 
         private async void MainForm_Load(object sender, EventArgs e)
         {
+            ConfigButton.Visible = false;
+
+            var executable = Path.ChangeExtension(Application.ExecutablePath, "exe");
+
+            m_startup = new ProgramStartup(Application.ProductName, executable);
+
+            StartupCheckbox.Checked = m_startup.GetStatus();
+
             var authenticator = await Auth.GetAuthenticatorFromFileAsync();
 
             await Initialize(authenticator);
@@ -109,6 +116,11 @@ namespace SpotifyHelper.UI
             using var configForm = new ConfigForm();
 
             configForm.ShowDialog();
+        }
+
+        private void StartupCheckbox_Click(object sender, EventArgs e)
+        {
+            m_startup.Toggle();
         }
     }
 }

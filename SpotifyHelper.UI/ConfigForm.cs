@@ -2,13 +2,13 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using static SpotifyHelper.UI.HotKeyManager;
 
 namespace SpotifyHelper.UI
 {
     public partial class ConfigForm : Form
     {
         private Keys m_key;
-        private KeyModifiers m_modifiers;
 
         private bool m_recordingKey;
 
@@ -24,8 +24,6 @@ namespace SpotifyHelper.UI
 
         private void SetSelectedModifiers(KeyModifiers modifiers)
         {
-            m_modifiers = modifiers;
-
             CtrlModifierCheckbox.Checked = modifiers.HasFlag(KeyModifiers.Control);
             AltModifierCheckbox.Checked = modifiers.HasFlag(KeyModifiers.Alt);
             ShiftModifierCheckbox.Checked = modifiers.HasFlag(KeyModifiers.Shift);

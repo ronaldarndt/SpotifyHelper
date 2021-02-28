@@ -5,18 +5,6 @@ using System.Windows.Forms;
 
 namespace SpotifyHelper.UI
 {
-
-    [Flags]
-    public enum KeyModifiers
-    {
-        None = 0,
-        Alt = 1,
-        Control = 2,
-        Shift = 4,
-        Windows = 8,
-        NoRepeat = 0x4000
-    }
-
     public static class HotKeyManager
     {
         #region External imports
@@ -37,6 +25,17 @@ namespace SpotifyHelper.UI
         delegate void UnRegisterHotKeyDelegate(IntPtr hwnd, int id);
 
         #endregion
+
+        [Flags]
+        public enum KeyModifiers
+        {
+            None = 0,
+            Alt = 1,
+            Control = 2,
+            Shift = 4,
+            Windows = 8,
+            NoRepeat = 0x4000
+        }
 
         private static volatile MessageWindow _wnd;
         private static volatile IntPtr _hwnd;
@@ -115,32 +114,32 @@ namespace SpotifyHelper.UI
                 base.SetVisibleCore(false);
             }
         }
-    }
 
-    public class HotKeyEventArgs : EventArgs
-    {
-        public readonly Keys Key;
-        public readonly KeyModifiers Modifiers;
-
-        public HotKeyEventArgs(Keys key, KeyModifiers modifiers)
+        public class HotKeyEventArgs : EventArgs
         {
-            Key = key;
-            Modifiers = modifiers;
+            public readonly Keys Key;
+            public readonly KeyModifiers Modifiers;
+
+            public HotKeyEventArgs(Keys key, KeyModifiers modifiers)
+            {
+                Key = key;
+                Modifiers = modifiers;
+            }
+
+            public HotKeyEventArgs(IntPtr hotKeyParam)
+            {
+                uint param = (uint)hotKeyParam.ToInt64();
+
+                Key = (Keys)((param & 0xffff0000) >> 16);
+
+                Modifiers = (KeyModifiers)(param & 0x0000ffff);
+            }
         }
 
-        public HotKeyEventArgs(IntPtr hotKeyParam)
+        public class HotkeyConfig
         {
-            uint param = (uint)hotKeyParam.ToInt64();
-
-            Key = (Keys)((param & 0xffff0000) >> 16);
-
-            Modifiers = (KeyModifiers)(param & 0x0000ffff);
+            public Keys Keys { get; set; }
+            public KeyModifiers Modifiers { get; set; }
         }
-    }
-
-    public class HotkeyConfig
-    {
-        public Keys Keys { get; set; }
-        public KeyModifiers Modifiers { get; set; }
-    }
+    }   
 }

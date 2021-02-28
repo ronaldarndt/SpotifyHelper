@@ -33,6 +33,7 @@ namespace SpotifyHelper.UI
             this.PlaylistsList = new System.Windows.Forms.CheckedListBox();
             this.currentPlayback = new System.Windows.Forms.Label();
             this.ConfigButton = new System.Windows.Forms.Button();
+            this.StartupCheckbox = new System.Windows.Forms.CheckBox();
             this.SuspendLayout();
             // 
             // AuthButton
@@ -73,11 +74,23 @@ namespace SpotifyHelper.UI
             this.ConfigButton.UseVisualStyleBackColor = true;
             this.ConfigButton.Click += new System.EventHandler(this.ConfigButton_Click);
             // 
+            // StartupCheckbox
+            // 
+            this.StartupCheckbox.AutoSize = true;
+            this.StartupCheckbox.Location = new System.Drawing.Point(99, 15);
+            this.StartupCheckbox.Name = "StartupCheckbox";
+            this.StartupCheckbox.Size = new System.Drawing.Size(112, 19);
+            this.StartupCheckbox.TabIndex = 4;
+            this.StartupCheckbox.Text = "Open on startup";
+            this.StartupCheckbox.UseVisualStyleBackColor = true;
+            this.StartupCheckbox.Click += new System.EventHandler(this.StartupCheckbox_Click);
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(337, 372);
+            this.Controls.Add(this.StartupCheckbox);
             this.Controls.Add(this.ConfigButton);
             this.Controls.Add(this.currentPlayback);
             this.Controls.Add(this.PlaylistsList);
@@ -96,6 +109,7 @@ namespace SpotifyHelper.UI
         private System.Windows.Forms.CheckedListBox PlaylistsList;
         private System.Windows.Forms.Label currentPlayback;
         private System.Windows.Forms.Button ConfigButton;
+        private System.Windows.Forms.CheckBox StartupCheckbox;
     }
 }
 
