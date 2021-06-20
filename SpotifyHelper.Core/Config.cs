@@ -12,7 +12,7 @@ namespace SpotifyHelper.Core
         public static event ConfigChangedHandler ConfigChanged;
         public delegate void ConfigChangedHandler(T newConfig);
 
-        private static Lazy<JsonSerializerOptions> s_serializerOptions = new Lazy<JsonSerializerOptions>(() => new JsonSerializerOptions()
+        private static readonly Lazy<JsonSerializerOptions> s_serializerOptions = new(() => new()
         {
             AllowTrailingCommas = false,
             WriteIndented = false,

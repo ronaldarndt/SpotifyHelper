@@ -11,19 +11,16 @@ namespace SpotifyHelper.Core
 {
     public static class Auth
     {
-        private static Uri s_baseUri = new Uri("http://localhost:3030");
+        private static readonly Uri s_baseUri = new("http://localhost:3030");
         private const string CLIENT_ID = "d6f591b2fcea4e32ba81486eb246d49d";
 
         public static async Task<IAuthenticator> GetAuthenticatorFromFileAsync()
         {
             var token = await GetFromFileAsync();
 
-            if (token is null)
-            {
-                return null;
-            }
-
-            return await GetAuthenticatorFromTokenAsync(token);
+            return token is null
+                ? null
+                : await GetAuthenticatorFromTokenAsync(token);
         }
 
         public static async Task<IAuthenticator> GetAuthenticatorAsync()
@@ -81,21 +78,18 @@ namespace SpotifyHelper.Core
 
             await loginBrowser.WaitForExitAsync(cts.Token);
 
-           await Cleanup();
+            await Cleanup();
 
             return code;
 
             async Task Cleanup()
-            {            
+            {
                 loginBrowser?.Dispose();
-                loginBrowser = null;
 
                 await server?.Stop();
                 server?.Dispose();
-                server = null;
 
                 cts?.Dispose();
-                cts = null;
             }
         }
 
@@ -122,7 +116,7 @@ namespace SpotifyHelper.Core
             return loginRequest.ToUri();
         }
 
-        private static EmbedIOAuthServer CreateServer() => new EmbedIOAuthServer(s_baseUri, 3030);
+        private static EmbedIOAuthServer CreateServer() => new(s_baseUri, 3030);
 
         private static async Task WriteToFileAsync(PKCETokenResponse obj)
         {
@@ -139,9 +133,9 @@ namespace SpotifyHelper.Core
             {
                 await using var file = File.OpenRead("creds.dat");
 
-                var result = await JsonSerializer.DeserializeAsync(file, typeof(PKCETokenResponse));
+                var result = await JsonSerializer.DeserializeAsync<PKCETokenResponse>(file);
 
-                return (PKCETokenResponse)result;
+                return result;
             }
             catch (FileNotFoundException)
             {

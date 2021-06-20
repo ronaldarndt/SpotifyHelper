@@ -6,8 +6,8 @@ namespace SpotifyHelper.Core
     {
         const string REG_PATH = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
 
-        private string m_appName;
-        private string m_appPath;
+        private readonly string m_appName;
+        private readonly string m_appPath;
 
         public ProgramStartup(string appName, string appPath)
         {

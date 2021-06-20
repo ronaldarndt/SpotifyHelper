@@ -1,4 +1,5 @@
 ﻿using Microsoft.Win32;
+using System;
 using System.Diagnostics;
 
 namespace SpotifyHelper.Core
@@ -27,7 +28,7 @@ namespace SpotifyHelper.Core
                 "FirefoxURL" => "-new-instance",
                 "OperaStable" => "-newwindow",
                 "SafariHTML" => "$1",
-                _ => "--new-window --user-data-dir=\"temp/spotifyhelper\"" //ChromeHTML or any other browser (i'm assuming all chromium based)
+                _ => $"--new-window --user-data-dir=\"{GetTempDir()}/spotifyhelper/{Guid.NewGuid()}\"" //ChromeHTML or any other browser (i'm assuming all chromium based)
             };
         }
 
@@ -49,6 +50,11 @@ namespace SpotifyHelper.Core
                 .ToLower()
                 .Replace("\"", "")
                 .Split(".exe")[0] + ".exe";
+        }
+
+        private static string GetTempDir()
+        {
+            return Environment.GetEnvironmentVariable("temp", EnvironmentVariableTarget.User) ?? "temp";
         }
     }
 }

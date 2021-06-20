@@ -1,11 +1,18 @@
 ﻿using SpotifyAPI.Web;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace SpotifyHelper.Core
 {
     public class Services
     {
+        public record PlaylistDTO
+        {
+            public string Id { get; set; }
+            public string Name { get; set; }
+        }
+
         public enum AddCurrentlyPlayingToPlaylistResponse : byte
         {
             Ok,
@@ -20,9 +27,12 @@ namespace SpotifyHelper.Core
             _client = client;
         }
 
-        public async Task<IList<SimplePlaylist>> GetPlaylists()
+        public async Task<IEnumerable<PlaylistDTO>> GetPlaylists()
         {
-            return await _client.PaginateAll(await _client.Playlists.CurrentUsers());
+            var requestResult = await _client.PaginateAll(await _client.Playlists.CurrentUsers());
+
+            return requestResult
+                .Select(x => new PlaylistDTO() with { Id = x.Id, Name = x.Name });
         }
 
         public async Task<AddCurrentlyPlayingToPlaylistResponse> AddCurrentlyPlayingToPlaylist(string playlistId)
@@ -48,7 +58,7 @@ namespace SpotifyHelper.Core
 
             if (playback != null && playback.IsPlaying && playback.Item is FullTrack track)
             {
-                if (await Exists(playlistId, track))
+                if (await ExistsAsync(playlistId, track))
                 {
                     return AddCurrentlyPlayingToPlaylistResponse.TrackAlreadyExists;
                 }
@@ -61,20 +71,30 @@ namespace SpotifyHelper.Core
             return AddCurrentlyPlayingToPlaylistResponse.Ok;
         }
 
-        private async Task<bool> Exists(string playlistId, FullTrack track)
+        private async Task<bool> ExistsAsync(string playlistId, FullTrack track)
         {
-            var request = new PlaylistGetItemsRequest(PlaylistGetItemsRequest.AdditionalTypes.Track);
-            request.Fields.Add("items(track(id, type))");
-            request.Limit = 25;
+            int? offset = 0;
 
-            var firstPage = await _client.Playlists.GetItems(playlistId, request);
-
-            await foreach (var item in _client.Paginate(firstPage, new SimplePaginator()))
+            while (offset.HasValue)
             {
-                if (((FullTrack)item.Track).Id == track.Id)
+                var request = new PlaylistGetItemsRequest(PlaylistGetItemsRequest.AdditionalTypes.Track)
+                {
+                    Limit = 35,
+                    Offset = offset
+                };
+
+                request.Fields.Add("items(track(id, type))");
+
+                var tracks = await _client.PaginateAll(await _client.Playlists.GetItems(playlistId, request));
+
+                if (tracks.Any(item => ((FullTrack)item.Track).Id == track.Id))
                 {
                     return true;
                 }
+
+                offset = tracks.Count > 0
+                    ? offset + tracks.Count
+                    : null;
             }
 
             return false;

@@ -1,5 +1,6 @@
 ﻿using SpotifyAPI.Web;
 using SpotifyHelper.Core;
+using SpotifyHelper.UI.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -12,10 +13,9 @@ namespace SpotifyHelper.UI
 {
     public partial class MainForm : Form
     {
-        private delegate object GetCheckedItemDelegate();
-
         private Services m_services;
         private ProgramStartup m_startup;
+        private Services.PlaylistDTO[] m_playlists;
 
         private int m_hotkeyId = -1;
 
@@ -52,9 +52,9 @@ namespace SpotifyHelper.UI
             var client = new SpotifyClient(spotifyConfig);
             m_services = new Services(client);
 
-            var playlists = await m_services.GetPlaylists();
+            m_playlists = (await m_services.GetPlaylists()).ToArray();
 
-            PlaylistsList.Items.AddRange(playlists.Select(x => x.Name + " - " + x.Id).ToArray());
+            PlaylistsList.Items.AddRange(m_playlists.Select(x => x.Name).ToArray());
         }
 
         private void ConfigureHotkey(HotKeyManager.HotkeyConfig config)
@@ -67,23 +67,17 @@ namespace SpotifyHelper.UI
             m_hotkeyId = HotKeyManager.RegisterHotKey(config.Keys, config.Modifiers);
         }
 
-        private object GetCheckedItems()
+        private IEnumerable<string> GetCheckedItems()
         {
-            var checkedItems = new List<string>();
-
-            foreach (var item in PlaylistsList.CheckedItems)
+            foreach (var index in PlaylistsList.CheckedIndices)
             {
-                checkedItems.Add(item.ToString());
+                yield return m_playlists[(int)index].Id;
             }
-
-            return checkedItems;
         }
 
         private async void HandleHotkey(object sender, HotKeyManager.HotKeyEventArgs e)
         {
-            var selectedKeys = (List<string>)Invoke(new GetCheckedItemDelegate(GetCheckedItems));
-
-            foreach (var selectedKey in selectedKeys.Select(x => x.Split("- ")[1]))
+            foreach (var selectedKey in this.Invoke(GetCheckedItems))
             {
                 await m_services.AddCurrentlyPlayingToPlaylist(selectedKey);
             }
