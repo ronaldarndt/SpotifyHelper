@@ -48,7 +48,9 @@ namespace SpotifyHelper.UI
             // 
             // PlaylistsList
             // 
-            this.PlaylistsList.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.PlaylistsList.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.PlaylistsList.CheckOnClick = true;
             this.PlaylistsList.FormattingEnabled = true;
             this.PlaylistsList.Location = new System.Drawing.Point(12, 41);
@@ -95,6 +97,7 @@ namespace SpotifyHelper.UI
             this.Controls.Add(this.currentPlayback);
             this.Controls.Add(this.PlaylistsList);
             this.Controls.Add(this.AuthButton);
+            this.MinimumSize = new System.Drawing.Size(347, 300);
             this.Name = "MainForm";
             this.Text = "Config";
             this.Load += new System.EventHandler(this.MainForm_Load);

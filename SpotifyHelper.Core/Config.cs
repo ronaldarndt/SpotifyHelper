@@ -3,61 +3,51 @@ using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace SpotifyHelper.Core
+namespace SpotifyHelper.Core;
+
+public class ConfigProvider<T>
 {
-    public class ConfigProvider<T>
+    private const string PATH = @".\config.json";
+
+    public event ConfigChangedHandler? ConfigChanged;
+    public delegate void ConfigChangedHandler(T newConfig);
+
+    private static readonly Lazy<JsonSerializerOptions> s_serializerOptions = new(() => new JsonSerializerOptions()
     {
-        private const string PATH = @".\config.json";
+        AllowTrailingCommas = false,
+        WriteIndented = false,
+        PropertyNamingPolicy = null,
+        ReadCommentHandling = JsonCommentHandling.Skip
+    });
 
-        public static event ConfigChangedHandler ConfigChanged;
-        public delegate void ConfigChangedHandler(T newConfig);
+    public T Config { get; private set; }
 
-        private static Lazy<JsonSerializerOptions> s_serializerOptions = new Lazy<JsonSerializerOptions>(() => new JsonSerializerOptions()
+    public ConfigProvider(T defaultConfig)
+    {
+        if (File.Exists(PATH))
         {
-            AllowTrailingCommas = false,
-            WriteIndented = false,
-            PropertyNamingPolicy = null,
-            ReadCommentHandling = JsonCommentHandling.Skip
-        });
+            using var file = File.OpenRead(PATH);
 
-        private static T m_config;
-
-        public static T Config
+            Config = JsonSerializer.Deserialize<T>(file, s_serializerOptions.Value)!;
+        }
+        else
         {
-            get => m_config;
+            Config = defaultConfig;
+        }
+    }
 
-            private set
-            {
-                m_config = value;
-
-                ConfigChanged.Invoke(value);
-            }
+    public async Task UpdateAsync(T newConfig)
+    {
+        if (Config is null || Config.Equals(newConfig))
+        {
+            return;
         }
 
-        public static async Task InitializeAsync(T defaultConfig)
-        {
-            if (File.Exists(PATH))
-            {
-                using var file = File.OpenRead(PATH);
+        Config = newConfig;
+        ConfigChanged?.Invoke(Config);
 
-                Config = await JsonSerializer.DeserializeAsync<T>(file, s_serializerOptions.Value);
-            }
-            else
-            {
-                Config = defaultConfig;
-            }
-        }
+        using var file = File.OpenWrite(PATH);
 
-        public static async Task UpdateAsync(T newConfig)
-        {
-            if (!Config.Equals(newConfig))
-            {
-                Config = newConfig;
-
-                using var file = File.OpenWrite(PATH);
-
-                await JsonSerializer.SerializeAsync(file, newConfig, s_serializerOptions.Value);
-            }
-        }
+        await JsonSerializer.SerializeAsync(file, newConfig, s_serializerOptions.Value);
     }
 }

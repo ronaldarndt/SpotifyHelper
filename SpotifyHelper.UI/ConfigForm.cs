@@ -3,91 +3,75 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 using static SpotifyHelper.UI.HotKeyManager;
+using static SpotifyHelper.Core.Extensions.EnumExtensions;
 
-namespace SpotifyHelper.UI
+namespace SpotifyHelper.UI;
+
+public partial class ConfigForm : Form
 {
-    public partial class ConfigForm : Form
+    private Keys m_key;
+    private bool m_recordingKey;
+    private readonly ConfigProvider<HotkeyConfig> m_configProvider;
+
+    public ConfigForm()
     {
-        private Keys m_key;
+        InitializeComponent();
 
-        private bool m_recordingKey;
+        m_configProvider = MainForm.ConfigProvider;
 
-        public ConfigForm()
+        SetSelectedKey(m_configProvider.Config.Keys);
+        SetSelectedModifiers(m_configProvider.Config.Modifiers);
+    }
+
+    private void SetSelectedModifiers(KeyModifiers modifiers)
+    {
+        CtrlModifierCheckbox.Checked = modifiers.HasFlag(KeyModifiers.Control);
+        AltModifierCheckbox.Checked = modifiers.HasFlag(KeyModifiers.Alt);
+        ShiftModifierCheckbox.Checked = modifiers.HasFlag(KeyModifiers.Shift);
+    }
+
+    private void SetSelectedKey(Keys key)
+    {
+        m_key = key;
+
+        SelectedLabel.Text = key.ToString();
+        SelectedLabel.ForeColor = Color.Black;
+        SelectedLabel.BorderStyle = BorderStyle.FixedSingle;
+        SelectedLabel.Font = new Font(SelectedLabel.Font, FontStyle.Bold);
+    }
+
+    private void button1_Click(object sender, EventArgs e)
+    {
+        m_recordingKey = true;
+
+        SelectedLabel.ForeColor = Color.DarkOrange;
+        SelectedLabel.Text = "Press any key";
+        SelectedLabel.BorderStyle = BorderStyle.None;
+        SelectedLabel.Font = new Font(SelectedLabel.Font, FontStyle.Regular);
+    }
+
+    private void ConfigForm_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (!m_recordingKey)
         {
-            InitializeComponent();
-
-            var config = ConfigProvider<HotkeyConfig>.Config;
-
-            SetSelectedKey(config.Keys);
-            SetSelectedModifiers(config.Modifiers);
+            return;
         }
 
-        private void SetSelectedModifiers(KeyModifiers modifiers)
-        {
-            CtrlModifierCheckbox.Checked = modifiers.HasFlag(KeyModifiers.Control);
-            AltModifierCheckbox.Checked = modifiers.HasFlag(KeyModifiers.Alt);
-            ShiftModifierCheckbox.Checked = modifiers.HasFlag(KeyModifiers.Shift);
-        }
+        SetSelectedKey(e.KeyCode);
 
-        private void SetSelectedKey(Keys key)
-        {
-            m_key = key;
+        m_recordingKey = false;
+        e.Handled = true;
+    }
 
-            SelectedLabel.Text = key.ToString();
-            SelectedLabel.ForeColor = Color.Black;
-            SelectedLabel.BorderStyle = BorderStyle.FixedSingle;
-            SelectedLabel.Font = new Font(SelectedLabel.Font, FontStyle.Bold);
-        }
+    private async void SaveButton_Click(object sender, EventArgs e)
+    {
+        var mods = KeyModifiers.None
+            .SetFlagIf(KeyModifiers.Control, CtrlModifierCheckbox.Checked)
+            .SetFlagIf(KeyModifiers.Alt, AltModifierCheckbox.Checked)
+            .SetFlagIf(KeyModifiers.Shift, ShiftModifierCheckbox.Checked);
 
-        private void button1_Click(object sender, EventArgs e)
-        {
-            m_recordingKey = true;
+        await m_configProvider.UpdateAsync(new HotkeyConfig(m_key, mods));
 
-            SelectedLabel.ForeColor = Color.DarkOrange;
-            SelectedLabel.Text = "Press any key";
-            SelectedLabel.BorderStyle = BorderStyle.None;
-            SelectedLabel.Font = new Font(SelectedLabel.Font, FontStyle.Regular);
-        }
-
-        private void ConfigForm_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (!m_recordingKey)
-            {
-                return;
-            }
-
-            SetSelectedKey(e.KeyCode);
-
-            m_recordingKey = false;
-            e.Handled = true;
-        }
-
-        private async void SaveButton_Click(object sender, EventArgs e)
-        {
-            var modifiers = KeyModifiers.None;
-
-            if (CtrlModifierCheckbox.Checked)
-            {
-                modifiers |= KeyModifiers.Control;
-            }
-
-            if (AltModifierCheckbox.Checked)
-            {
-                modifiers |= KeyModifiers.Alt;
-            }
-
-            if (ShiftModifierCheckbox.Checked)
-            {
-                modifiers |= KeyModifiers.Shift;
-            }
-
-            await ConfigProvider<HotkeyConfig>.UpdateAsync(new HotkeyConfig()
-            {
-                Keys = m_key,
-                Modifiers = modifiers
-            });
-
-            DialogResult = DialogResult.OK;
-        }
+        DialogResult = DialogResult.OK;
     }
 }

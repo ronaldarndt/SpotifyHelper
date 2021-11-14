@@ -8,119 +8,114 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace SpotifyHelper.UI
+namespace SpotifyHelper.UI;
+
+public partial class MainForm : Form
 {
-    public partial class MainForm : Form
+    public static ConfigProvider<HotKeyManager.HotkeyConfig> ConfigProvider { get; }
+        = new(new(Keys.F1, HotKeyManager.KeyModifiers.Control));
+
+    private readonly ProgramStartup m_startup;
+    private Services? m_services;
+    private int m_hotkeyId = -1;
+
+    public MainForm()
     {
-        private delegate object GetCheckedItemDelegate();
+        InitializeComponent();
 
-        private Services m_services;
-        private ProgramStartup m_startup;
+        HotKeyManager.HotKeyPressed += HandleHotkey;
+        ConfigProvider.ConfigChanged += ConfigureHotkey;
 
-        private int m_hotkeyId = -1;
+        var executable = Path.ChangeExtension(Application.ExecutablePath, "exe");
+        m_startup = new ProgramStartup(Application.ProductName, executable);
 
-        public MainForm()
+        StartupCheckbox.Checked = m_startup.GetStatus();
+    }
+
+    private async Task Initialize(IAuthenticator? authenticator)
+    {
+        if (authenticator is null)
         {
-            InitializeComponent();
+            return;
         }
 
-        private async Task Initialize(IAuthenticator authenticator)
+        AuthButton.Visible = false;
+        ConfigButton.Visible = true;
+
+        var spotifyConfig = SpotifyClientConfig
+            .CreateDefault()
+            .WithAuthenticator(authenticator);
+
+        var client = new SpotifyClient(spotifyConfig);
+        m_services = new Services(client);
+
+        var playlists = await m_services.GetPlaylists();
+
+        PlaylistsList.Items.AddRange(playlists.Select(x => x.Name + " - " + x.Id).ToArray());
+    }
+
+    private void ConfigureHotkey(HotKeyManager.HotkeyConfig config)
+    {
+        if (m_hotkeyId > -1)
         {
-            if (authenticator is null)
-            {
-                return;
-            }
-
-            AuthButton.Visible = false;
-            ConfigButton.Visible = true;
-
-            HotKeyManager.HotKeyPressed += HandleHotkey;
-            ConfigProvider<HotKeyManager.HotkeyConfig>.ConfigChanged += ConfigureHotkey;
-
-            await ConfigProvider<HotKeyManager.HotkeyConfig>
-                .InitializeAsync(new HotKeyManager.HotkeyConfig()
-                {
-                    Keys = Keys.F1,
-                    Modifiers = HotKeyManager.KeyModifiers.Control
-                });
-
-            var spotifyConfig = SpotifyClientConfig
-                .CreateDefault()
-                .WithHTTPLogger(null)
-                .WithAuthenticator(authenticator);
-
-            var client = new SpotifyClient(spotifyConfig);
-            m_services = new Services(client);
-
-            var playlists = await m_services.GetPlaylists();
-
-            PlaylistsList.Items.AddRange(playlists.Select(x => x.Name + " - " + x.Id).ToArray());
+            HotKeyManager.UnregisterHotKey(m_hotkeyId);
         }
 
-        private void ConfigureHotkey(HotKeyManager.HotkeyConfig config)
-        {
-            if (m_hotkeyId > -1)
-            {
-                HotKeyManager.UnregisterHotKey(m_hotkeyId);
-            }
+        m_hotkeyId = HotKeyManager.RegisterHotKey(config.Keys, config.Modifiers);
+    }
 
-            m_hotkeyId = HotKeyManager.RegisterHotKey(config.Keys, config.Modifiers);
+    private object GetCheckedItems()
+    {
+        var checkedItems = new List<string>();
+
+        foreach (var item in PlaylistsList.CheckedItems)
+        {
+            checkedItems.Add(item?.ToString() ?? "");
         }
 
-        private object GetCheckedItems()
+        return checkedItems;
+    }
+
+    private async void HandleHotkey(object? sender, HotKeyManager.HotKeyEventArgs e)
+    {
+        if (m_services is null)
         {
-            var checkedItems = new List<string>();
-
-            foreach (var item in PlaylistsList.CheckedItems)
-            {
-                checkedItems.Add(item.ToString());
-            }
-
-            return checkedItems;
+            return;
         }
 
-        private async void HandleHotkey(object sender, HotKeyManager.HotKeyEventArgs e)
+        var selectedKeys = (List<string>)Invoke(GetCheckedItems);
+
+        foreach (var selectedKey in selectedKeys.Select(x => x.Split("- ")[1]))
         {
-            var selectedKeys = (List<string>)Invoke(new GetCheckedItemDelegate(GetCheckedItems));
-
-            foreach (var selectedKey in selectedKeys.Select(x => x.Split("- ")[1]))
-            {
-                await m_services.AddCurrentlyPlayingToPlaylist(selectedKey);
-            }
+            await m_services.AddCurrentlyPlayingToPlaylist(selectedKey);
         }
+    }
 
-        private async void button1_Click(object sender, EventArgs e)
-        {
-            var authenticator = await Auth.GetAuthenticatorAsync();
+    private async void button1_Click(object sender, EventArgs e)
+    {
+        var authenticator = await Auth.GetAuthenticatorAsync();
 
-            await Initialize(authenticator);
-        }
+        await Initialize(authenticator);
+    }
 
-        private async void MainForm_Load(object sender, EventArgs e)
-        {
-            ConfigButton.Visible = false;
+    private async void MainForm_Load(object sender, EventArgs e)
+    {
+        ConfigButton.Visible = false;
 
-            var executable = Path.ChangeExtension(Application.ExecutablePath, "exe");
+        var authenticator = await Auth.GetAuthenticatorFromFileAsync();
 
-            m_startup = new ProgramStartup(Application.ProductName, executable);
+        await Initialize(authenticator);
+    }
 
-            StartupCheckbox.Checked = m_startup.GetStatus();
+    private void ConfigButton_Click(object sender, EventArgs e)
+    {
+        using var configForm = new ConfigForm();
 
-            var authenticator = await Auth.GetAuthenticatorFromFileAsync();
+        configForm.ShowDialog();
+    }
 
-            await Initialize(authenticator);
-        }
-
-        private void ConfigButton_Click(object sender, EventArgs e)
-        {
-            using var configForm = new ConfigForm();
-
-            configForm.ShowDialog();
-        }
-
-        private void StartupCheckbox_Click(object sender, EventArgs e)
-        {
-            m_startup.Toggle();
-        }
+    private void StartupCheckbox_Click(object sender, EventArgs e)
+    {
+        m_startup.Toggle();
     }
 }
