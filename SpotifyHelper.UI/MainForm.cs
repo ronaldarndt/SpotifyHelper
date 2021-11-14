@@ -23,6 +23,8 @@ public partial class MainForm : Form
     {
         InitializeComponent();
 
+        ConfigureHotkey(ConfigProvider.Config);
+
         HotKeyManager.HotKeyPressed += HandleHotkey;
         ConfigProvider.ConfigChanged += ConfigureHotkey;
 

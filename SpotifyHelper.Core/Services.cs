@@ -40,14 +40,30 @@ public class Services
 
     private async Task<bool> TrackExistsInPlaylistAsync(string playlistId, FullTrack track)
     {
-        var request = new PlaylistGetItemsRequest(PlaylistGetItemsRequest.AdditionalTypes.Track);
-        request.Fields.Add("items(track(id, type))");
-        request.Limit = 25;
+        const int OFFSET = 25;
 
-        var firstPage = await m_client.Playlists.GetItems(playlistId, request);
+        var request = new PlaylistGetItemsRequest(PlaylistGetItemsRequest.AdditionalTypes.Track)
+        {
+            Limit = OFFSET,
+            Offset = 0
+        };
+        request.Fields.Add("items(track(id, type)),total");
 
-        return await m_client.Paginate(firstPage, new SimplePaginator())
-            .Any(x => x.Track is FullTrack item && item.Id == track.Id);
+        Paging<PlaylistTrack<IPlayableItem>>? page = null;
+
+        do
+        {
+            page = await m_client.Playlists.GetItems(playlistId, request);
+
+            if (await m_client.Paginate(page).Any(x => x.Track is FullTrack item && item.Id == track.Id))
+            {
+                return true;
+            }
+
+            request.Offset += OFFSET;
+        } while (request.Offset < page.Total);
+
+        return false;
     }
 
     private async Task<bool> PlaylistExistsAsync(string? playlistId)
