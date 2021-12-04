@@ -11,6 +11,7 @@ public class FileStorage : IPersistentStorage
         AllowTrailingCommas = false,
         WriteIndented = false,
         PropertyNamingPolicy = null,
+        PropertyNameCaseInsensitive = true,
         ReadCommentHandling = JsonCommentHandling.Skip
     };
 
