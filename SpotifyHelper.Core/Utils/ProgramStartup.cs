@@ -1,10 +1,10 @@
 ﻿using Microsoft.Win32;
 
-namespace SpotifyHelper.Core;
+namespace SpotifyHelper.Core.Utils;
 
 public class ProgramStartup
 {
-    const string REG_PATH = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
+    private const string REG_PATH = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
 
     private readonly string m_appName;
     private readonly string m_appPath;

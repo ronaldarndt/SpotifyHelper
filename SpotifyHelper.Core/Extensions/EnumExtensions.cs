@@ -9,12 +9,15 @@ public static class EnumExtensions
     {
         if (condition)
         {
-            var result = Unsafe.As<T, int>(ref source) | Unsafe.As<T, int>(ref flag);
+            var result = ToInt(source) | ToInt(flag);
 
             return (T)Enum.ToObject(typeof(T), result);
         }
 
         return source;
+
+        static int ToInt(T source) => Unsafe.As<T, int>(ref source); 
     }
+
 }
 

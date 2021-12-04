@@ -1,21 +1,25 @@
-﻿using SpotifyAPI.Web;
-using SpotifyHelper.Core;
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Windows.Forms;
+using SpotifyAPI.Web;
+using SpotifyHelper.Core;
+using SpotifyHelper.Core.Config;
+using SpotifyHelper.Core.Storage;
+using SpotifyHelper.Core.Token;
+using SpotifyHelper.Core.Utils;
+using static SpotifyHelper.UI.HotKeyManager;
 
 namespace SpotifyHelper.UI;
 
 public partial class MainForm : Form
 {
-    public static ConfigProvider<HotKeyManager.HotkeyConfig> ConfigProvider { get; }
-        = new(new(Keys.F1, HotKeyManager.KeyModifiers.Control));
+    private static readonly FileStorage s_storage = new();
+    public static ConfigProvider<ConfigModel> ConfigProvider { get; } = new(s_storage);
 
     private readonly ProgramStartup m_startup;
+    private readonly Auth m_auth;
     private Services? m_services;
     private int m_hotkeyId = -1;
 
@@ -25,11 +29,13 @@ public partial class MainForm : Form
 
         ConfigureHotkey(ConfigProvider.Config);
 
-        HotKeyManager.HotKeyPressed += HandleHotkey;
+        HotKeyPressed += HandleHotkey;
         ConfigProvider.ConfigChanged += ConfigureHotkey;
 
         var executable = Path.ChangeExtension(Application.ExecutablePath, "exe");
         m_startup = new ProgramStartup(Application.ProductName, executable);
+
+        m_auth = new Auth(s_storage, new TokenProvider(ConfigProvider.Config.ClientId));
 
         StartupCheckbox.Checked = m_startup.GetStatus();
     }
@@ -56,14 +62,14 @@ public partial class MainForm : Form
         PlaylistsList.Items.AddRange(playlists.Select(x => x.Name + " - " + x.Id).ToArray());
     }
 
-    private void ConfigureHotkey(HotKeyManager.HotkeyConfig config)
+    private void ConfigureHotkey(ConfigModel config)
     {
         if (m_hotkeyId > -1)
         {
-            HotKeyManager.UnregisterHotKey(m_hotkeyId);
+            UnregisterHotKey(m_hotkeyId);
         }
 
-        m_hotkeyId = HotKeyManager.RegisterHotKey(config.Keys, config.Modifiers);
+        m_hotkeyId = RegisterHotKey(config.Key, config.KeyModifiers);
     }
 
     private object GetCheckedItems()
@@ -78,7 +84,7 @@ public partial class MainForm : Form
         return checkedItems;
     }
 
-    private async void HandleHotkey(object? sender, HotKeyManager.HotKeyEventArgs e)
+    private async void HandleHotkey(object? sender, HotKeyEventArgs e)
     {
         if (m_services is null)
         {
@@ -95,7 +101,7 @@ public partial class MainForm : Form
 
     private async void button1_Click(object sender, EventArgs e)
     {
-        var authenticator = await Auth.GetAuthenticatorAsync();
+        var authenticator = await m_auth.GetAuthenticatorAsync();
 
         await Initialize(authenticator);
     }
@@ -104,7 +110,7 @@ public partial class MainForm : Form
     {
         ConfigButton.Visible = false;
 
-        var authenticator = await Auth.GetAuthenticatorFromFileAsync();
+        var authenticator = await m_auth.GetAuthenticatorFromFileAsync();
 
         await Initialize(authenticator);
     }

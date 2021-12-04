@@ -1,7 +1,5 @@
-﻿using System;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Threading;
-using System.Windows.Forms;
 
 namespace SpotifyHelper.UI;
 
@@ -36,51 +34,21 @@ public static class HotKeyManager
 
     public record HotkeyConfig(Keys Keys, KeyModifiers Modifiers);
 
-    private static readonly ManualResetEvent s_windowReadyEvent = new(initialState: false);
-    private static MessageWindow s_msgWindow = new();
+    private static readonly Window s_window = new();
     private static int s_id = 0;
-
-    static HotKeyManager()
-    {
-        new Thread(MessageLoopThread)
-        {
-            Name = nameof(MessageLoopThread),
-            IsBackground = true
-        }.Start();
-
-        static void MessageLoopThread()
-        {
-            s_msgWindow = new();
-            s_windowReadyEvent.Set();
-
-            Application.Run(s_msgWindow);
-        }
-    }
 
     public static int RegisterHotKey(Keys key, KeyModifiers modifiers)
     {
-        s_windowReadyEvent.WaitOne();
-
         var id = Interlocked.Increment(ref s_id);
 
-        s_msgWindow.Invoke(RegisterHotKeyInternal, s_msgWindow.Handle, id, (uint)modifiers, (uint)key);
+        RegisterHotKey(s_window.Handle, id, (uint)modifiers, (uint)key);
 
         return id;
     }
 
     public static void UnregisterHotKey(int id)
     {
-        s_msgWindow.Invoke(UnRegisterHotKeyInternal, s_msgWindow.Handle, id);
-    }
-
-    private static void RegisterHotKeyInternal(IntPtr hwnd, int id, uint modifiers, uint key)
-    {
-        RegisterHotKey(hwnd, id, modifiers, key);
-    }
-
-    private static void UnRegisterHotKeyInternal(IntPtr hwnd, int id)
-    {
-        UnregisterHotKey(s_msgWindow.Handle, id);
+        UnregisterHotKey(s_window.Handle, id);
     }
 
     private static void OnHotKeyPressed(HotKeyEventArgs e)
@@ -90,33 +58,30 @@ public static class HotKeyManager
 
     public class HotKeyEventArgs : EventArgs
     {
-        public readonly Keys Key;
-        public readonly KeyModifiers Modifiers;
+        public HotkeyConfig Keys { get; init; }
 
         public HotKeyEventArgs(IntPtr hotKeyParam)
         {
-            uint param = (uint)hotKeyParam.ToInt64();
+            var param = (uint)hotKeyParam.ToInt64();
 
-            Key = (Keys)((param & 0xffff0000) >> 16);
-
-            Modifiers = (KeyModifiers)(param & 0x0000ffff);
+            Keys = new HotkeyConfig((Keys)((param & 0xffff0000) >> 16), (KeyModifiers)(param & 0x0000ffff));
         }
     }
 
-    private class MessageWindow : Form
+    private class Window : NativeWindow
     {
-        private const int WM_HOTKEY = 0x312;
+        private const int WM_HOTKEY = 0x0312;
+
+        public Window() => CreateHandle(new CreateParams());
 
         protected override void WndProc(ref Message m)
         {
+            base.WndProc(ref m);
+
             if (m.Msg == WM_HOTKEY)
             {
-                OnHotKeyPressed(new(m.LParam));
+                OnHotKeyPressed(new HotKeyEventArgs(m.LParam));
             }
-
-            base.WndProc(ref m);
         }
-
-        protected override void SetVisibleCore(bool value) => base.SetVisibleCore(false);
     }
 }

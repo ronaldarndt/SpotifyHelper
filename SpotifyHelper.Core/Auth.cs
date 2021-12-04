@@ -1,144 +1,55 @@
-﻿using SpotifyAPI.Web;
-using SpotifyAPI.Web.Auth;
-using System;
-using System.IO;
-using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
+using SpotifyAPI.Web;
+using SpotifyHelper.Core.Storage;
+using SpotifyHelper.Core.Token;
 
 namespace SpotifyHelper.Core;
 
-public static class Auth
+public class Auth
 {
-    private static readonly Uri s_baseUri = new("http://localhost:3030");
-    private const string CLIENT_ID = "d6f591b2fcea4e32ba81486eb246d49d";
+    private readonly IPersistentStorage m_persistentStorage;
+    private readonly ITokenProvider m_tokenProvider;
+    private const string FILENAME = "creds.dat";
 
-    public static async Task<IAuthenticator?> GetAuthenticatorFromFileAsync()
+    public Auth(IPersistentStorage persistentStorage, ITokenProvider tokenProvider)
     {
-        var token = await GetFromFileAsync();
+        m_persistentStorage = persistentStorage;
+        m_tokenProvider = tokenProvider;
+    }
+
+    public async Task<IAuthenticator?> GetAuthenticatorFromFileAsync()
+    {
+        var token = await m_persistentStorage.GetAsync<PKCETokenResponse>(FILENAME);
 
         return token is null
             ? null
             : await GetAuthenticatorFromTokenAsync(token);
     }
 
-    public static async Task<IAuthenticator> GetAuthenticatorAsync()
+    public async Task<IAuthenticator> GetAuthenticatorAsync()
     {
-        var token = await GetFromFileAsync();
+        var token = await m_persistentStorage.GetAsync<PKCETokenResponse>(FILENAME);
 
         if (token is null)
         {
-            var (verifier, challenge) = PKCEUtil.GenerateCodes(120);
-
-            var code = await GetCodeAsync(challenge);
-
-            token = await new OAuthClient()
-                .RequestToken(new PKCETokenRequest(CLIENT_ID, code, s_baseUri, verifier));
+            token = await m_tokenProvider.GetPKCETokenAsync();
         }
 
         return await GetAuthenticatorFromTokenAsync(token);
     }
 
-    private static async Task<IAuthenticator> GetAuthenticatorFromTokenAsync(PKCETokenResponse token)
+    private async Task<IAuthenticator> GetAuthenticatorFromTokenAsync(PKCETokenResponse token)
     {
-        var authenticator = new PKCEAuthenticator(CLIENT_ID, token);
+        var authenticator = new PKCEAuthenticator(m_tokenProvider.GetClientId(), token);
 
-        await WriteToFileAsync(token);
+        await m_persistentStorage.SaveAsync(FILENAME, token);
 
         authenticator.TokenRefreshed += async (sender, e) =>
         {
-            await WriteToFileAsync(e);
+            await m_persistentStorage.SaveAsync(FILENAME, e);
         };
 
         return authenticator;
-    }
-
-    private static async Task<string> GetCodeAsync(string challenge)
-    {
-        var loginUrl = GetLoginUrl(challenge);
-
-        using var server = CreateServer();
-        using var loginBrowser = Browser.OpenDefault(loginUrl.AbsoluteUri);
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
-
-        await server.Start();
-
-        var code = await WaitForCodeAsync(server, cts.Token);
-
-        await server.Stop();
-
-        return code;
-    }
-
-    private static async Task<string> WaitForCodeAsync(EmbedIOAuthServer server, CancellationToken cancellationToken)
-    {
-        var tcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        var handler = (object sender, AuthorizationCodeResponse response) =>
-        {
-            tcs.TrySetResult(response.Code);
-            return Task.CompletedTask;
-        };
-
-        server.AuthorizationCodeReceived += handler;
-
-        using var _ = cancellationToken.Register(() => tcs.TrySetCanceled(cancellationToken));
-
-        var code = await tcs.Task;
-
-        server.AuthorizationCodeReceived -= handler;
-
-        return code;
-    }
-
-    private static Uri GetLoginUrl(string challenge)
-    {
-        var scopes = new[]
-        {
-                Scopes.PlaylistReadPrivate,
-                Scopes.PlaylistReadCollaborative,
-                Scopes.PlaylistModifyPublic,
-                Scopes.PlaylistModifyPrivate,
-                Scopes.UserReadPlaybackState,
-                Scopes.UserReadCurrentlyPlaying
-        };
-
-        var loginRequest = new LoginRequest(s_baseUri, CLIENT_ID, LoginRequest.ResponseType.Code)
-        {
-            CodeChallengeMethod = "S256",
-            CodeChallenge = challenge,
-            Scope = scopes,
-            ShowDialog = false
-        };
-
-        return loginRequest.ToUri();
-    }
-
-    private static EmbedIOAuthServer CreateServer() => new(s_baseUri, 3030);
-
-    private static async Task WriteToFileAsync(PKCETokenResponse obj)
-    {
-        await using var file = File.OpenWrite("creds.dat");
-
-        await JsonSerializer.SerializeAsync(file, obj);
-
-        await file.FlushAsync();
-    }
-
-    private static async Task<PKCETokenResponse?> GetFromFileAsync()
-    {
-        try
-        {
-            await using var file = File.OpenRead("creds.dat");
-
-            var result = await JsonSerializer.DeserializeAsync<PKCETokenResponse>(file);
-
-            return result;
-        }
-        catch (FileNotFoundException)
-        {
-            return null;
-        }
     }
 }
 

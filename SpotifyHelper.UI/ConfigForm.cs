@@ -1,9 +1,7 @@
-﻿using SpotifyHelper.Core;
-using System;
-using System.Drawing;
-using System.Windows.Forms;
-using static SpotifyHelper.UI.HotKeyManager;
+﻿using System.Drawing;
+using SpotifyHelper.Core.Config;
 using static SpotifyHelper.Core.Extensions.EnumExtensions;
+using static SpotifyHelper.UI.HotKeyManager;
 
 namespace SpotifyHelper.UI;
 
@@ -11,7 +9,7 @@ public partial class ConfigForm : Form
 {
     private Keys m_key;
     private bool m_recordingKey;
-    private readonly ConfigProvider<HotkeyConfig> m_configProvider;
+    private readonly ConfigProvider<ConfigModel> m_configProvider;
 
     public ConfigForm()
     {
@@ -19,8 +17,8 @@ public partial class ConfigForm : Form
 
         m_configProvider = MainForm.ConfigProvider;
 
-        SetSelectedKey(m_configProvider.Config.Keys);
-        SetSelectedModifiers(m_configProvider.Config.Modifiers);
+        SetSelectedKey(m_configProvider.Config.Key);
+        SetSelectedModifiers(m_configProvider.Config.KeyModifiers);
     }
 
     private void SetSelectedModifiers(KeyModifiers modifiers)
@@ -70,7 +68,7 @@ public partial class ConfigForm : Form
             .SetFlagIf(KeyModifiers.Alt, AltModifierCheckbox.Checked)
             .SetFlagIf(KeyModifiers.Shift, ShiftModifierCheckbox.Checked);
 
-        await m_configProvider.UpdateAsync(new HotkeyConfig(m_key, mods));
+        await m_configProvider.UpdateAsync(m_configProvider.Config with { Key = m_key, KeyModifiers = mods });
 
         DialogResult = DialogResult.OK;
     }

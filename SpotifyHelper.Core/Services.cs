@@ -7,16 +7,18 @@ namespace SpotifyHelper.Core;
 
 public class Services
 {
-    private readonly SpotifyClient m_client;
+    private readonly ISpotifyClient m_client;
 
-    public Services(SpotifyClient client)
+    public Services(ISpotifyClient client)
     {
         m_client = client;
     }
 
     public async Task<IList<SimplePlaylist>> GetPlaylists()
     {
-        return await m_client.PaginateAll(await m_client.Playlists.CurrentUsers());
+        var playlists = await m_client.Playlists.CurrentUsers();
+
+        return await m_client.PaginateAll(playlists);
     }
 
     public async Task AddCurrentlyPlayingToPlaylist(string playlistId)

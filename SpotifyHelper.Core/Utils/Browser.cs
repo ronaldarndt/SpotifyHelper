@@ -1,7 +1,7 @@
 ﻿using Microsoft.Win32;
 using System.Diagnostics;
 
-namespace SpotifyHelper.Core;
+namespace SpotifyHelper.Core.Utils;
 
 public class Browser
 {
