@@ -7,8 +7,8 @@ I like to play games while listening to music on spotify. Sometimes i feel like 
 
 So with this app i can press alt+f1 or whatever i configured, and save the current playing song to my playlist.
 
-
 ## Built with
+
 - .Net 6
 - Winforms
 - [SpotifyAPI-Net](https://github.com/JohnnyCrazy/SpotifyAPI-NET)
